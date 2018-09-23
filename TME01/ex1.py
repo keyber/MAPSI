@@ -91,6 +91,6 @@ plt.figure()
 fonctionHistogramme.pltbarCompacte(data[:,4]/1000000,5)
 plt.xlabel("tranche d'âge")
 plt.ylabel('effectif (million)\ntotal: ' + str(np.sum(data[:,4])/1000000))
+plt.savefig("tuto.pdf")
 plt.show()
-
 
