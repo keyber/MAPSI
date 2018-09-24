@@ -16,25 +16,59 @@ def loadData():
                       s['available_bike_stands']]
                      #élimine les données incorrectes au passage
                      for s in data if 1<=s['number']//1000<=20])
+def correlation(valsA, valsB, pab):
+    """ecart type de A et B non nuls"""
+    #covariance = somme des p * (x-E(x))(y-E(y))
+    #coef corrélation = covariance / ecarttype1*ecarttype2
+    moyA = np.mean(valsA)
+    stdA = np.std(valsA)
+    moyB = np.mean(valsB)
+    stdB = np.std(valsB)
+    covariance = 0
+    for i in range(len(valsA)):
+        for j in range(len(valsB)):
+            covariance += pab[i][j] * (valsA[i] - moyA) * (valsB[j] - moyB)
+    return covariance, covariance / (stdA*stdB)
+
+def correlationBrute(valsA, valsB):
+    """ecart type de A et B non nuls"""
+    assert(len(valsA)==len(valsB))
+    moyA = np.mean(valsA)
+    stdA = np.std(valsA)
+    moyB = np.mean(valsB)
+    stdB = np.std(valsB)
+    covariance = 0
+    for i in range(len(valsA)):
+        covariance += 1/len(valsA) * (valsA[i] - moyA) * (valsB[i] - moyB)
+    return covariance, covariance / (stdA*stdB)
+
 def main():
     """INITIALISATION"""
     #latitude:x2, longitude:x1
-    alt,x2,x1,arr,total,dispo = loadData().transpose()
+    alt,x2,x1,arr,total,nbPlace = loadData().transpose()
     pos = np.array([x1,x2])
     del x1,x2
-    nStation = alt.size
-    stationPleine = np.array(dispo==0)#on ne peut pas y poser son vélo
-    veloDispo = np.array(total - dispo >= 2)#on peut en prendre 2
+    nStation = len(alt)
+    stationPleine = np.array(nbPlace==0)#on ne peut pas y poser son vélo
+    veloDispo = np.array(total - nbPlace >= 2)#on peut en prendre 2
 
     """CALCUL DES PROBAS"""
+    #interv[-1] est le maximum et est atteint
     pArr, intervArr,_ = plt.hist(arr, 20, density=True)
+    pArr = np.array(pArr)
     nAlt = 30
-    pAlt, intervAlt,_ = plt.hist(alt, nAlt, density=True)
+    pAlt, intervAlt,_ = plt.hist(alt, nAlt)
+    pAlt = np.array(pAlt/nStation)
     #plt.show()
     plt.close('all')
 
+    #vmax arrive dans un autre intervale, on retourne celui d'avant
     indFromAlt = lambda x:\
-        int((x - intervAlt[0]) * nAlt / (intervAlt[nAlt]-intervAlt[0]))
+        min(nAlt-1, int((x - intervAlt[0]) * nAlt / (intervAlt[nAlt]-intervAlt[0])))
+
+    nStation_alt = np.array([0]*nAlt)
+    for i in range(nStation):
+        nStation_alt[indFromAlt(alt[i])] += 1
 
     #tableau des P(StationPleine|Altitude=a)
     pSP_alt = np.array([0]*nAlt)
@@ -44,13 +78,22 @@ def main():
             pSP_alt[indFromAlt(alt[i])] += 1
     #divise par le nombre de station de chaque alt
     #suppose les probas non nulles
-    pSP_alt = pSP_alt / (pAlt * nStation)
+    print(nStation_alt)
+    print(pSP_alt)
+    pSP_alt /= nStation_alt#fixme
+    print(pSP_alt)
+    assert(false)
 
     pVD_alt = np.array([0]*nAlt)
+    print(pVD_alt)
     for i in range(nStation):
         if veloDispo[i]:
             pVD_alt[indFromAlt(alt[i])] += 1
-    pVD_alt = pVD_alt / (pAlt * nStation)
+    print(pVD_alt)
+    print(pAlt)
+    print(nStation)
+    print(pAlt * nStation)
+    pVD_alt /= (pAlt * nStation)
 
     pVD_arr = np.array([0]*20)
     for i in range(nStation):
@@ -82,23 +125,50 @@ def main():
     plt.scatter(*pos[:,np.where((stationPleine | (veloDispo==0))==0)],c='g',s=16, linewidths=0)
     plt.legend(["plein", "vide", "autre"], fontsize=10)
 
-    moy = np.mean(alt)
-    med = np.median(alt)
+    altMoy = np.mean(alt)
+    altMed = np.median(alt)
 
     plt.figure()
     plt.axis('equal')
     #pas pratique pour la légende
     colors = np.array(['r' if stationPleine[i] else
                        'b' if not veloDispo[i] else 'g' for i in range(nStation)])
-    ind, = np.where(alt > moy)
+    ind, = np.where(alt > altMoy)
     plt.scatter(*pos[:,ind],c=colors[ind],s=16, linewidths=0)
 
     plt.figure()
     plt.axis('equal')
-    ind, = np.where(alt > med)
+    ind, = np.where(alt > altMed)
     plt.scatter(*pos[:,ind],c=colors[ind],s=16, linewidths=0)
 
-    plt.show()
+    #plt.show()
+
+    """CORRELATION"""
+    print("corrélation directe", correlationBrute(alt, veloDispo))
+
+    pab = np.array([pVD_alt[:], [1-pVD_alt[i] for i in range(len(pVD_alt))]])
+    print(pab.size, len(pab), len(pab[0]))
+    print(pab)
+    correlation_vd_alt = correlation(np.array([1,0]),intervAlt,pab)
+    print("corrélation générique regoupement altitude", correlation_vd_alt)
+
+    #VD, VD_alt 1 avec proba vd[i], 0 avec proba 1-vd[i]
+    #revient à faire vd[i] avec proba de 1
+    """démonstration
+    p(Alt=alt, VD=vd) = p(VD=d|Alt=a)*p(Alt=a)
+     la covariance est la somme sur a de
+          VD_alt[a]  * p(a) * (a-am) * (1-dm)
+     + (1-VD_alt[a]) * p(a) * (a-am) * (0-dm)
+     = p(a)*(a-am) * [(1-dm)*VD_alt[a] - dm*(1-VD_alt[a])]
+     = p(a)*(a-am) * (VD - dmVD - dm + dmVD)
+     = p(a)*(a-am) * (VD_alt[a] - dm)"""
+    covariance_vd_alt = 0
+    for i in range(len(pAlt)):
+        covariance_vd_alt += pAlt[i] * (intervAlt[i] - np.mean(intervAlt)) * (pVD_alt[i] - np.mean(pVD_alt))
+    correlation_vd_alt = covariance_vd_alt / (np.std(intervAlt) * np.std(pVD_alt))
+    print("correlation proba-variable regroupement altitude" ,covariance_vd_alt, correlation_vd_alt)
+
+    #tri des arrondissements par proba vd croissante
 
 main()
 
