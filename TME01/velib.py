@@ -12,6 +12,64 @@ def assertDensity(a):
 def areProba(a):
     return not np.any((a<0)|(a>1))
 
+def correlation(valsA, valsB, pab):
+    """:param pab loi jointe de a et b
+    :param valsA valeurs prises par la variable aléatoire A
+    :param valsB valeurs prises par la variable aléatoire B"""
+    assert (*valsA.shape, *valsB.shape) == pab.shape
+    assert areProba(pab)
+    pa = np.array([np.sum(pab[i,:]) for i in range(len(valsA))])
+    assertDensity(pa)
+    #espérance: somme des x * P(x)
+    moyA = np.sum(pa*valsA)
+    #variance: somme des P(x) * (x-moyA)**2
+    stdA = math.sqrt(sum([pa[i] * (valsA[i] - moyA) **2 for i in range(len(valsA))]))
+    pb = np.array([np.sum(pab[:,i]) for i in range(len(valsB))])
+    assertDensity(pb)
+    moyB = np.sum(pb*valsB)
+    stdB = math.sqrt(sum([pb[i] * (valsB[i] - moyB) **2 for i in range(len(valsB))]))
+    #print(moyA, stdA, pa)
+    #print(moyB, stdB, pb)
+
+    #covariance = somme des p * (x-E(x))(y-E(y))
+    covariance = 0
+    for i in range(len(valsA)):
+        for j in range(len(valsB)):
+            covariance += pab[i][j] * (valsA[i] - moyA) * (valsB[j] - moyB)
+
+    #coef corrélation = covariance / ecarttype1*ecarttype2
+    correl = covariance / (stdA*stdB)
+    assert abs(correl)<=1.001
+    return covariance, correl
+
+def correlationBrute(valsA, valsB):
+    """ecart type de A et B doivent être non nuls"""
+    assert len(valsA)==len(valsB)
+    n = len(valsA)
+    moyA = np.mean(valsA)
+    stdA = np.std(valsA)
+    moyB = np.mean(valsB)
+    stdB = np.std(valsB)
+    covariance = 0
+    for i in range(n):
+        covariance += 1/n * (valsA[i] - moyA) * (valsB[i] - moyB)
+    correl = covariance / (stdA*stdB)
+    assert abs(correl)<=1.001
+    return covariance, correl
+
+def correlationPVar(pA_B, pB, varB):
+    """P[i] = [1 avec proba p[i], 0 avec proba 1-p[i]] <-> varB[i] = p[i]. dem:
+    p(Alt=alt, VD=vd) = p(VD=d|Alt=a)*p(Alt=a)
+     la covariance est la somme sur a de
+         P   * p(a) * (a-am) * (1-pm)
+     + (1-P) * p(a) * (a-am) * (0-pm)
+     = p(a)*(a-am) * [(1-pm)*P - dm*(1-P)]
+     = p(a)*(a-am) * (P - pmP - pm + pmP)
+     = p(a)*(a-am) * (P - pm)"""
+    assert pA_B.ndim==1 and pA_B.shape==pB.shape and pB.shape==varB.shape
+    pab = np.array([pA_B*pB, [(1 - pA_B[i]) * pB[i] for i in range(len(pA_B))]])
+    return correlation(np.array([1,0]), varB, pab)
+
 def loadData():
     with open('dataVelib.pkl','rb') as f:
         data = pkl.load(f)
@@ -26,49 +84,6 @@ def loadData():
                       s['available_bike_stands']]
                      #élimine les données incorrectes au passage
                      for s in data if 1<=s['number']//1000<=20])
-def correlation(valsA, valsB, pab):
-    """ecart type de A et B non nuls"""
-    assert (*valsA.shape, *valsB.shape) == pab.shape
-    assert areProba(pab)
-    pa = np.array([np.sum(pab[i,:]) for i in range(len(valsA))])
-    assertDensity(pa)
-    #espérance: somme des x * P(x)
-    moyA = np.sum(pa*valsA)
-    #variance: somme des P(x) * (x-moyA)**2
-    stdA = math.sqrt(sum([pa[i] * (valsA[i] - moyA) **2 for i in range(len(valsA))]))
-    pb = np.array([np.sum(pab[:,i]) for i in range(len(valsB))])
-    assertDensity(pb)
-    moyB = np.sum(pb*valsB)
-    stdB = math.sqrt(sum([pb[i] * (valsB[i] - moyB) **2 for i in range(len(valsB))]))
-
-    print(moyA, stdA, pa)
-    print(moyB, stdB, pb)
-
-    #covariance = somme des p * (x-E(x))(y-E(y))
-    covariance = 0
-    for i in range(len(valsA)):
-        for j in range(len(valsB)):
-            covariance += pab[i][j] * (valsA[i] - moyA) * (valsB[j] - moyB)
-
-    #coef corrélation = covariance / ecarttype1*ecarttype2
-    correl = covariance / (stdA*stdB)
-    assert abs(correl)<=1.001
-    return covariance, correl
-
-def correlationBrute(valsA, valsB):
-    """ecart type de A et B non nuls"""
-    assert(len(valsA)==len(valsB))
-    n = len(valsA)
-    moyA = np.mean(valsA)
-    stdA = np.std(valsA)
-    moyB = np.mean(valsB)
-    stdB = np.std(valsB)
-    covariance = 0
-    for i in range(n):
-        covariance += 1/n * (valsA[i] - moyA) * (valsB[i] - moyB)
-    correl = covariance / (stdA*stdB)
-    assert abs(correl)<=1.001
-    return covariance, correl
 
 def main():
     """INITIALISATION"""
@@ -173,24 +188,9 @@ def main():
 
     pab = np.array([pVD_alt[:]*pAlt, [(1-pVD_alt[i])*pAlt[i] for i in range(len(pVD_alt))]])
 
-    correlation_vd_alt = correlation(np.array([1,0]), intervAlt[:-1], pab)
-    print("corrélation générique regoupement altitude", correlation_vd_alt)
-
-    #VD, VD_alt 1 avec proba vd[i], 0 avec proba 1-vd[i]
-    #revient à faire vd[i] avec proba de 1
-    """démonstration
-    p(Alt=alt, VD=vd) = p(VD=d|Alt=a)*p(Alt=a)
-     la covariance est la somme sur a de
-          VD_alt[a]  * p(a) * (a-am) * (1-dm)
-     + (1-VD_alt[a]) * p(a) * (a-am) * (0-dm)
-     = p(a)*(a-am) * [(1-dm)*VD_alt[a] - dm*(1-VD_alt[a])]
-     = p(a)*(a-am) * (VD - dmVD - dm + dmVD)
-     = p(a)*(a-am) * (VD_alt[a] - dm)"""
-    covariance_vd_alt = 0
-    for i in range(len(pAlt)):
-        covariance_vd_alt += pAlt[i] * (intervAlt[i] - np.mean(intervAlt)) * (pVD_alt[i] - np.mean(pVD_alt))
-    correlation_vd_alt = covariance_vd_alt / (np.std(intervAlt) * np.std(pVD_alt))
-    print("correlation proba-variable regroupement altitude" ,(covariance_vd_alt, correlation_vd_alt))
+    #correlation_vd_alt = correlation(np.array([1,0]), intervAlt[:-1], pab)
+    correlation_vd_alt = correlationPVar(pVD_alt, pAlt, np.array(intervAlt[:-1]))
+    print("corrélation regoupement altitude", correlation_vd_alt)
 
     #tri des arrondissements par proba vd croissante
 
