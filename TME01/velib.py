@@ -1,6 +1,16 @@
 import pickle as pkl
 import matplotlib.pyplot as plt
 import numpy as np
+import math
+
+def assertDensity(a):
+    if abs(np.sum(a)-1)>.001 or not areProba(a):
+        print(a.shape, a.size)
+        print(a)
+        print(np.sum(a))
+        assert False
+def areProba(a):
+    return not np.any((a<0)|(a>1))
 
 def loadData():
     with open('dataVelib.pkl','rb') as f:
@@ -18,29 +28,47 @@ def loadData():
                      for s in data if 1<=s['number']//1000<=20])
 def correlation(valsA, valsB, pab):
     """ecart type de A et B non nuls"""
+    assert (*valsA.shape, *valsB.shape) == pab.shape
+    assert areProba(pab)
+    pa = np.array([np.sum(pab[i,:]) for i in range(len(valsA))])
+    assertDensity(pa)
+    #espérance: somme des x * P(x)
+    moyA = np.sum(pa*valsA)
+    #variance: somme des P(x) * (x-moyA)**2
+    stdA = math.sqrt(sum([pa[i] * (valsA[i] - moyA) **2 for i in range(len(valsA))]))
+    pb = np.array([np.sum(pab[:,i]) for i in range(len(valsB))])
+    assertDensity(pb)
+    moyB = np.sum(pb*valsB)
+    stdB = math.sqrt(sum([pb[i] * (valsB[i] - moyB) **2 for i in range(len(valsB))]))
+
+    print(moyA, stdA, pa)
+    print(moyB, stdB, pb)
+
     #covariance = somme des p * (x-E(x))(y-E(y))
-    #coef corrélation = covariance / ecarttype1*ecarttype2
-    moyA = np.mean(valsA)
-    stdA = np.std(valsA)
-    moyB = np.mean(valsB)
-    stdB = np.std(valsB)
     covariance = 0
     for i in range(len(valsA)):
         for j in range(len(valsB)):
             covariance += pab[i][j] * (valsA[i] - moyA) * (valsB[j] - moyB)
-    return covariance, covariance / (stdA*stdB)
+
+    #coef corrélation = covariance / ecarttype1*ecarttype2
+    correl = covariance / (stdA*stdB)
+    assert abs(correl)<=1.001
+    return covariance, correl
 
 def correlationBrute(valsA, valsB):
     """ecart type de A et B non nuls"""
     assert(len(valsA)==len(valsB))
+    n = len(valsA)
     moyA = np.mean(valsA)
     stdA = np.std(valsA)
     moyB = np.mean(valsB)
     stdB = np.std(valsB)
     covariance = 0
-    for i in range(len(valsA)):
-        covariance += 1/len(valsA) * (valsA[i] - moyA) * (valsB[i] - moyB)
-    return covariance, covariance / (stdA*stdB)
+    for i in range(n):
+        covariance += 1/n * (valsA[i] - moyA) * (valsB[i] - moyB)
+    correl = covariance / (stdA*stdB)
+    assert abs(correl)<=1.001
+    return covariance, correl
 
 def main():
     """INITIALISATION"""
@@ -54,18 +82,21 @@ def main():
 
     """CALCUL DES PROBAS"""
     #interv[-1] est le maximum et est atteint
-    pArr, intervArr,_ = plt.hist(arr, 20, density=True)
-    pArr = np.array(pArr)
+    pArr, intervArr,_ = plt.hist(arr,20)#density=True ne donne pas exactement le résutat attendu
+    pArr = np.array(pArr/nStation)
     nAlt = 30
     pAlt, intervAlt,_ = plt.hist(alt, nAlt)
     pAlt = np.array(pAlt/nStation)
     #plt.show()
     plt.close('all')
+    assertDensity(pArr)
+    assertDensity(pAlt)
 
     #vmax arrive dans un autre intervale, on retourne celui d'avant
     indFromAlt = lambda x:\
         min(nAlt-1, int((x - intervAlt[0]) * nAlt / (intervAlt[nAlt]-intervAlt[0])))
 
+    #normalement égal à pAlt*nStation
     nStation_alt = np.array([0]*nAlt)
     for i in range(nStation):
         nStation_alt[indFromAlt(alt[i])] += 1
@@ -78,28 +109,22 @@ def main():
             pSP_alt[indFromAlt(alt[i])] += 1
     #divise par le nombre de station de chaque alt
     #suppose les probas non nulles
-    print(nStation_alt)
-    print(pSP_alt)
-    pSP_alt /= nStation_alt#fixme
-    print(pSP_alt)
-    assert(false)
+    pSP_alt = pSP_alt / nStation_alt
+    assert areProba(pSP_alt)
 
     pVD_alt = np.array([0]*nAlt)
-    print(pVD_alt)
     for i in range(nStation):
         if veloDispo[i]:
             pVD_alt[indFromAlt(alt[i])] += 1
-    print(pVD_alt)
-    print(pAlt)
-    print(nStation)
-    print(pAlt * nStation)
-    pVD_alt /= (pAlt * nStation)
+    pVD_alt = pVD_alt / (pAlt * nStation)
+    assert areProba(pVD_alt)
 
     pVD_arr = np.array([0]*20)
     for i in range(nStation):
         if veloDispo[i]:
             pVD_arr[int(arr[i]-1)] += 1
     pVD_arr = pVD_arr / (pArr * nStation)
+    assert areProba(pVD_arr)
 
     """AFFICHAGE STATIONS"""
     #fait varier les couleurs en premier
@@ -146,10 +171,9 @@ def main():
     """CORRELATION"""
     print("corrélation directe", correlationBrute(alt, veloDispo))
 
-    pab = np.array([pVD_alt[:], [1-pVD_alt[i] for i in range(len(pVD_alt))]])
-    print(pab.size, len(pab), len(pab[0]))
-    print(pab)
-    correlation_vd_alt = correlation(np.array([1,0]),intervAlt,pab)
+    pab = np.array([pVD_alt[:]*pAlt, [(1-pVD_alt[i])*pAlt[i] for i in range(len(pVD_alt))]])
+
+    correlation_vd_alt = correlation(np.array([1,0]), intervAlt[:-1], pab)
     print("corrélation générique regoupement altitude", correlation_vd_alt)
 
     #VD, VD_alt 1 avec proba vd[i], 0 avec proba 1-vd[i]
@@ -166,7 +190,7 @@ def main():
     for i in range(len(pAlt)):
         covariance_vd_alt += pAlt[i] * (intervAlt[i] - np.mean(intervAlt)) * (pVD_alt[i] - np.mean(pVD_alt))
     correlation_vd_alt = covariance_vd_alt / (np.std(intervAlt) * np.std(pVD_alt))
-    print("correlation proba-variable regroupement altitude" ,covariance_vd_alt, correlation_vd_alt)
+    print("correlation proba-variable regroupement altitude" ,(covariance_vd_alt, correlation_vd_alt))
 
     #tri des arrondissements par proba vd croissante
 
