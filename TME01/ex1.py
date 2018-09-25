@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import fonctionHistogramme
 #import pickle as pkl
 plt.close('all')
+import pdb
+pdb.set_trace()
 
 def output():
     """création concaténation affichage écriture fichier"""
