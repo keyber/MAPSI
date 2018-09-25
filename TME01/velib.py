@@ -185,13 +185,16 @@ def main():
     #plt.show()
 
     """CORRELATION"""
-    print("variance, corrélation disponibilité - altitude", correlationBrute(alt, veloDispo))
+    print("variance et corrélation entre disponibilité et :\n")
+    print("ALTITUDE", correlationBrute(alt, veloDispo))
+    print("\tnp.corrcoef :", *np.corrcoef(alt, veloDispo))
 
     correlation_vd_alt = correlationPVar(pVD_alt, pAlt, np.array(intervAlt[:-1]))
-    print("variance, corrélation disponibilité - regoupement altitude", correlation_vd_alt)
+    print("\taltitudes regroupées en 30 catégories", correlation_vd_alt, '\n')
 
 
-    print("variance, corrélation disponibilité - arrondissement", correlationBrute(arr, veloDispo))
+    print("ARRONDISSEMENT", correlationBrute(arr, veloDispo))
+    print("\tnp.corrcoef :", *np.corrcoef(arr, veloDispo), '\n')
 
     #tri des arrondissements par proba vd croissante
     sortedIndexes = np.argsort(np.vectorize(lambda x:pVD_arr[x-1]+x/10000)(arr))
@@ -206,14 +209,13 @@ def main():
             arrToInd[num_actuel]=ind_actuel
         arrS[i]=ind_actuel
 
-    print("variance, corrélation disponibilité - arrondissement triés par taux de disponibilité croissante",
+    print("ARRONDISSEMENTS TRIES par taux de disponibilité croissante",
           correlationBrute(arrS,veloDispo[sortedIndexes]))
+    print("\tnp.corrcoef :", *np.corrcoef(arrS,veloDispo[sortedIndexes]))
 
     correlation_vd_arr = correlationPVar(pVD_arr, pArr, np.array([arrToInd[i] for i in range(1,21)]))
-    print("variance, corrélation disponibilité - arrondissement triés par taux de disponibilité croissante bis",
-        correlation_vd_arr)
+    print("\tvariance, corrélation bis", correlation_vd_arr, '\n')
+
+    print("corrélation de la disponibilité avec: altitude (en valeur absolue) > arrondissements triés > arrondissement")
 
 main()
-
-
-
