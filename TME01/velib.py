@@ -73,8 +73,6 @@ def correlationPVar(pA_B, pB, varB):
     return correlation(np.array([1,0]), varB, pab)
 
 
-
-
 def loadData():
     with open('dataVelib.pkl','rb') as f:
         data = pkl.load(f)

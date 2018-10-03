@@ -3,9 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 import itertools
+from mpl_toolkits.mplot3d import Axes3D
 import pyAgrum as gum
 import pyAgrum.lib.ipython as gnb
-
 
 def assertDensity(a):
     if abs(np.sum(a)-1)>.001 or not areProba(a):
@@ -66,8 +66,6 @@ def pXY(x, y):
     res = np.array([y * valx for valx in x])
     assert areProba(res)
     return res
-
-from mpl_toolkits.mplot3d import Axes3D
 
 def dessine(P_jointe):
     fig = plt.figure()
@@ -153,10 +151,66 @@ def independancesConditionnelles():
     print(prod_xyz)
     print(np.all(np.abs(P_XYZ - prod_xyz) < .001))
 
+def read_file(filename):
+    """
+    Renvoie les variables aléatoires et la probabilité contenues dans le
+    fichier dont le nom est passé en argument.
+    """
+    Pjointe = gum.Potential ()
+    variables = []
+
+    fic = open ( filename, 'r' )
+    # on rajoute les variables dans le potentiel
+    nb_vars = int ( fic.readline () )
+    for i in range ( nb_vars ):
+        name, domsize = fic.readline ().split ()
+        variable = gum.LabelizedVariable(name,name,int (domsize))
+        variables.append ( variable )
+        Pjointe.add(variable)
+
+    # on rajoute les valeurs de proba dans le potentiel
+    cpt = []
+    for line in fic:
+        cpt.append ( float(line) )
+    Pjointe.fillWith(np.array ( cpt ) )
+
+    fic.close ()
+    return np.array ( variables ), Pjointe
+
+def conditional_indep(p, x, y, z, e):
+    """p:potential, x,y:labelized var, z:labelized var list, e:float
+    return X indep Y | Z"""
+    xyz = p.margSumIn([i.name() for i in [x,y,*z]])
+    yz = xyz.margSumIn([i.name() for i in [y,*z]])
+    xz = xyz.margSumIn([i.name() for i in [x,*z]])
+    z = xz.margSumIn([i.name() for i in z])
+    x_z = xz / z
+    y_z = yz / z
+
+    q = xyz - x_z*y_z
+
+    return q.abs().max() < e
+
+def compact_conditional_proba(p,x,e):
+    """p:potential, x:labelized var, e:float"""
+    k = p.variablesSequence()
+    for xi in k:
+        k.remove(xi)
+        if not conditional_indep(p,x,xi,k,e):
+            k.append(xi)
+    q = p.margSumIn([i.name() for i in k])
+    return p.margSumIn([x.name()])/q
+
+def consoMemoire():
+    var, proba = read_file("asia.txt")
+    gnb.showPotential(proba)
+    c = compact_conditional_proba(proba, var[0],0.001)
+    gnb.showPotential(c)
 
 def main():
     #galton()
     #visualisationIndependances()
-    independancesConditionnelles()
+    #independancesConditionnelles()
+    consoMemoire()
 
 main()
