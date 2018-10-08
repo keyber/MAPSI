@@ -1,0 +1,41 @@
+XT indép sachant YZ :  True
+X indép YZ :  False
+
+
+pour dyspnoea? il est équivalent de savoir
+visit_to_Asia? tuberculosis? smoking? lung_cancer? tuberculosis_or_lung_cancer? bronchitis? positive_Xray?
+tuberculosis? lung_cancer? bronchitis? tuberculosis_or_lung_cancer?
+7 -> 4 
+
+pour positive_Xray? il est équivalent de savoir
+visit_to_Asia? tuberculosis? smoking? lung_cancer? tuberculosis_or_lung_cancer? bronchitis?
+tuberculosis? lung_cancer? bronchitis? tuberculosis_or_lung_cancer?
+6 -> 4 
+
+pour bronchitis? il est équivalent de savoir
+visit_to_Asia? tuberculosis? smoking? lung_cancer? tuberculosis_or_lung_cancer?
+tuberculosis? lung_cancer? smoking?
+5 -> 3 
+
+pour tuberculosis_or_lung_cancer? il est équivalent de savoir
+visit_to_Asia? tuberculosis? smoking? lung_cancer?
+tuberculosis? lung_cancer?
+4 -> 2 
+
+pour lung_cancer? il est équivalent de savoir
+visit_to_Asia? tuberculosis? smoking?
+tuberculosis? smoking?
+3 -> 2 
+
+pour smoking? il est équivalent de savoir
+visit_to_Asia? tuberculosis?
+tuberculosis?
+2 -> 1 
+
+pour tuberculosis? il est équivalent de savoir
+visit_to_Asia?
+
+1 -> 0 
+
+256 -> 102
+
