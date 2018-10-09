@@ -73,12 +73,12 @@ def dessine(P_jointe):
     x = np.linspace (0, 10, P_jointe.shape[1])
     y = np.linspace (0, 10, P_jointe.shape[0])
     X, Y = np.meshgrid(x, y)
-    print(X.shape, Y.shape, P_jointe.shape)
+    #print(X.shape, Y.shape, P_jointe.shape)
     ax.plot_surface(X, Y, P_jointe)
     ax.set_xlabel('A')
     ax.set_ylabel('B')
     ax.set_zlabel('P(A) * P(B)')
-    plt.show()
+    #plt.show()
 
 def visualisationIndependances():
     """Visualisation d'indépendances"""
@@ -93,7 +93,6 @@ def visualisationIndependances():
     plt.close('all')
 
     norm_aff = pXY(normy, affy)
-    print(norm_aff)
     dessine(norm_aff)
 
 def independancesConditionnelles():
@@ -131,11 +130,11 @@ def independancesConditionnelles():
             assertDensity(P_XT_YZ[:, :, y, z])
             assertDensity(P_X_YZ [:, y, z])
             assertDensity(P_T_YZ [:, y, z])
-    print(P_XT_YZ)
+    #print(P_XT_YZ)
     prod_xt_yz = np.array([P_X_YZ[x, y, z] * P_T_YZ[t, y, z] for x, t, y, z in
                      itertools.product(*map(range, [2,2,2,2]))]).reshape(2,2,2,2)
-    print(prod_xt_yz)
-    print(np.all(np.abs(P_XT_YZ - prod_xt_yz) < .001))
+    #print(prod_xt_yz)
+    print('XT indép sachant YZ : ', np.all(np.abs(P_XT_YZ - prod_xt_yz) < .001))
 
     #indépendance X et (Y,Z)
     P_XYZ = np.array([np.sum(P_XYZT[x,y,z,:]) for x,y,z in
@@ -147,9 +146,9 @@ def independancesConditionnelles():
 
     prod_xyz = np.array([P_X[x] * P_YZ2[y, z] for x, y, z in
                          itertools.product(*map(range, [2,2,2]))]).reshape(2,2,2)
-    print(P_XYZ)
-    print(prod_xyz)
-    print(np.all(np.abs(P_XYZ - prod_xyz) < .001))
+    #print(P_XYZ)
+    #print(prod_xyz)
+    print('X indép YZ : ', np.all(np.abs(P_XYZ - prod_xyz) < .001))
 
 def read_file(filename):
     """
@@ -178,39 +177,68 @@ def read_file(filename):
     return np.array ( variables ), Pjointe
 
 def conditional_indep(p, x, y, z, e):
-    """p:potential, x,y:labelized var, z:labelized var list, e:float
-    return X indep Y | Z"""
-    xyz = p.margSumIn([i.name() for i in [x,y,*z]])
-    yz = xyz.margSumIn([i.name() for i in [y,*z]])
-    xz = xyz.margSumIn([i.name() for i in [x,*z]])
-    z = xz.margSumIn([i.name() for i in z])
-    x_z = xz / z
-    y_z = yz / z
+    """p:potential, x,y:labelized var, z:variable sequence, e:float
+    return  true if X indep Y | Z
+    suppose x et y pas dans z"""
+    if len(z) == 0:
+        xy = p.margSumIn([x.name(), y.name()])
+        x = xy.margSumIn([x.name()])
+        y = xy.margSumIn([y.name()])
+        q = xy - x*y
 
-    q = xyz - x_z*y_z
+    else :
+        xyz = p.margSumIn([i.name() for i in [x,y,*z]])
+        xz = xyz.margSumIn([i.name() for i in [x,*z]])
+        yz = xyz.margSumIn([i.name() for i in [y,*z]])
+        z = xz.margSumIn([i.name() for i in z])
+        xy_z = xyz / z
+        x_z = xz / z
+        y_z = yz / z
+        q = xy_z - x_z*y_z
 
     return q.abs().max() < e
 
 def compact_conditional_proba(p,x,e):
-    """p:potential, x:labelized var, e:float"""
+    """p:potential = loi jointe des Xi,
+    X:labelized var, e:float
+    return P(X|{Xk}) avec Xk dpdt X | {Xk}"""
+    print('pour',x.name(),'il est équivalent de savoir')
     k = p.variablesSequence()
+    k.remove(x)
+    print(*map(lambda x:x.name(),k))
     for xi in k:
         k.remove(xi)
         if not conditional_indep(p,x,xi,k,e):
             k.append(xi)
-    q = p.margSumIn([i.name() for i in k])
-    return p.margSumIn([x.name()])/q
+    print(*map(lambda x:x.name(),k))
+    print(len(p.variablesSequence())-1 ,'->', len(k), '\n')
+    r = p.margSumIn([x.name()])
+    if len(k) == 0:
+        return r
+    return r / p.margSumIn([i.name() for i in k])
+
+def create_bayesian_network(p,e):
+    liste = []
+    for i in range(len(p.variablesSequence())-1,0,-1):
+        q = compact_conditional_proba(p,p.variablesSequence()[i],e)
+        liste.append(q)
+        p = p.margSumOut([p.variablesSequence()[i].name()])
+    return liste
 
 def consoMemoire():
     var, proba = read_file("asia.txt")
-    gnb.showPotential(proba)
-    c = compact_conditional_proba(proba, var[0],0.001)
-    gnb.showPotential(c)
+    #gnb.showPotential(proba)
+    #proba = proba.putFirst(var[0].name())
+    #c = compact_conditional_proba(proba, var[0],0.001)
+    #gnb.showPotential(c)
+    l = create_bayesian_network(proba, .001)
+    print(proba.toarray().size, '->', sum([i.toarray().size for i in l]))
 
 def main():
-    #galton()
-    #visualisationIndependances()
-    #independancesConditionnelles()
+    galton()
+    visualisationIndependances()
+    independancesConditionnelles()
+    print('\n\n')
     consoMemoire()
 
 main()
