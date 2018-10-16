@@ -113,6 +113,58 @@ def find_bounds(data, params):
     
     return x_min, x_max, z_min, z_max
 
+def Q_i(data, current_params, current_weights):
+    """return Qi,t+1"""
+    loi1,loi2 = current_params
+    poids1, poids2 = current_weights
+    a0 = np.array([normale2D(x,y, loi1) for x,y in data]) * poids1
+    a1 = np.array([normale2D(x,y, loi2) for x,y in data]) * poids2
+    q0 = a0 / (a0 + a1)
+    q1 = a1 / (a0 + a1)
+    return np.array([[q0[i], q1[i]] for i in range(q0.size)])
+
+def M_step(data, Q):
+    """return [loi1=m1m2s1s2r,loi2],[pi0,pi1]"""
+    Q0 = Q[:, 0]
+    Q1 = Q[:, 1]
+    sumQ0 = Q0.sum()
+    sumQ1 = Q1.sum()
+    
+    pi0 = sumQ0 / (sumQ0 + sumQ1)
+    pi1 = sumQ1 / (sumQ0 + sumQ1)
+    
+    xi = data[:, 0]
+    yi = data[:, 1]
+    
+    mux0 = (Q0 * xi).sum() / sumQ0
+    mux1 = (Q1 * xi).sum() / sumQ1
+    
+    muy0 = (Q0 * yi).sum() / sumQ0
+    muy1 = (Q1 * yi).sum() / sumQ1
+    
+    sigmax0 = math.sqrt((Q0 * (xi - mux0) ** 2).sum() / sumQ0)
+    sigmax1 = math.sqrt((Q1 * (xi - mux1) ** 2).sum() / sumQ1)
+    
+    sigmay0 = math.sqrt((Q0 * (yi - muy0) ** 2).sum() / sumQ0)
+    sigmay1 = math.sqrt((Q1 * (yi - muy1) ** 2).sum() / sumQ1)
+    
+    p0 = ((Q0 * ((xi - mux0) * (yi - muy0) / (sigmax0 * sigmay0))).sum()) / sumQ0
+    p1 = ((Q1 * ((xi - mux1) * (yi - muy1) / (sigmax1 * sigmay1))).sum()) / sumQ1
+    
+    return (np.array([[mux0, muy0, sigmax0, sigmay0, p0], [mux1, muy1, sigmax1, sigmay1, p1]]),
+            np.array([pi0, pi1]))
+
+# calcul des bornes pour contenir toutes les lois normales calculées
+def find_video_bounds ( data, res_EM ):
+    bounds = np.asarray ( find_bounds ( data, res_EM[0][0] ) )
+    for param in res_EM:
+        new_bound = find_bounds ( data, param[0] )
+        for i in [0,2]:
+            bounds[i] = min ( bounds[i], new_bound[i] )
+        for i in [1,3]:
+            bounds[i] = max ( bounds[i], new_bound[i] )
+    return bounds
+
 def main():
     data = read_file("faithful.txt")
 
@@ -122,18 +174,48 @@ def main():
     std1 = data[:, 0].std()
     std2 = data[:, 1].std()
     
-    print(mean1,mean2,std1,std2)
+    print("moy1,2, std1,2",mean1,mean2,std1,std2)
 
     # les paramètres des 2 normales sont autour de ces moyennes
-    params = np.array([(2, 50, .5, 5, 0),
-                       (4, 80, .9, 9, 0)])
-    weights = np.array([0.4, 0.6])
-    bounds = find_bounds(data, params)
-
-    # affichage de la figure
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    dessine_normales(data, params, weights, bounds, ax)
-    plt.show()
+    params = np.array([(mean1 - 0.2, mean2 - 1, std1, std2, 0),
+                       (mean1 + 0.2, mean2 + 1, std1, std2, 0)])
+    weights = np.array([0.5, 0.5])
     
+    res = [(params,weights)]
+    for i in range(20):
+        res.append((params,weights))
+        Q = Q_i(data, params, weights)
+        params,weights = M_step(data, Q)
+        """affichage de la figure
+        bounds = find_bounds(data, params)
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        dessine_normales(data, params, weights, bounds, ax)
+        plt.show()
+        """
+
+    bounds = find_video_bounds(data, res)
+    import matplotlib.animation as animation
+
+    # création de l'animation : tout d'abord on crée la figure qui sera animée
+    fig = plt.figure()
+    ax = fig.gca(xlim=(bounds[0], bounds[1]), ylim=(bounds[2], bounds[3]))
+
+    # la fonction appelée à chaque pas de temps pour créer l'animation
+    def animate(i):
+        ax.cla()
+        dessine_normales(data, res[i][0], res[i][1], bounds, ax)
+        ax.text(5, 40, 'step = ' + str(i))
+        print("step animate = %d" %i)
+
+    # exécution de l'animation
+    anim = animation.FuncAnimation(fig, animate, frames=len(res), interval=50)
+    plt.show()
+
+    # éventuellement, sauver l'animation dans une vidéo
+    Writer = animation.writers['ffmpeg']
+    writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
+
+    anim.save('old_faithful.mp4', writer=writer)
+
 main()
