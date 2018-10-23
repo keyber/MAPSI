@@ -210,12 +210,12 @@ def main():
 
     # exécution de l'animation
     anim = animation.FuncAnimation(fig, animate, frames=len(res), interval=50)
-    plt.show()
+    #plt.show()
 
     # éventuellement, sauver l'animation dans une vidéo
-    Writer = animation.writers['ffmpeg']
+    Writer = animation.writers['html']
     writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
 
-    anim.save('old_faithful.mp4', writer=writer)
+    anim.save('old_faithful.html', writer=writer)
 
 main()
