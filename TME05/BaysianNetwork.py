@@ -89,8 +89,16 @@ def sufficient_statistics(data, dico, x, y, z):
             n+=1
     
     dof = (tailleX-1)*(tailleY-1)*n
-    return res, dof
+    return res, dof,tailleZ
 
+import scipy.stats as stats
+def indep_score(data, dico, x, y, z):
+    chi2,dof,sz = sufficient_statistics(data, dico, x, y, z)
+    assert sz == np.array([len(dico[i]) for i in z]).prod()
+    if len(data[0]) < 5 * len(dico[x]) * len(dico[y]) *\
+            np.array([len(dico[i]) for i in z]).prod():
+        return -1, 1
+    return stats.chi2.sf(chi2, dof), dof
 
 def main():
     # names : tableau contenant les noms des variables aléatoires
@@ -98,6 +106,8 @@ def main():
     # dico  : tableau de dictionnaires contenant la correspondance (valeur de variable -> nombre)
     names, data, dico = read_csv("asia.csv")
     print(sufficient_statistics(data, dico, 5,2, [1,3,6]))
+    print( indep_score  ( data, dico, 1, 2,[3, 4]))
+
 
 
 main()
