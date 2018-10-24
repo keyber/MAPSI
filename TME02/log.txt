@@ -1,41 +1,126 @@
+/usr/bin/python3.5 /home/keyvan/MAPSI/TME02/reseau_bayesien.py
 XT indép sachant YZ :  True
 X indép YZ :  False
 
 
-pour dyspnoea? il est équivalent de savoir
-visit_to_Asia? tuberculosis? smoking? lung_cancer? tuberculosis_or_lung_cancer? bronchitis? positive_Xray?
-tuberculosis? lung_cancer? bronchitis? tuberculosis_or_lung_cancer?
-7 -> 4 
 
-pour positive_Xray? il est équivalent de savoir
-visit_to_Asia? tuberculosis? smoking? lung_cancer? tuberculosis_or_lung_cancer? bronchitis?
-tuberculosis? lung_cancer? bronchitis? tuberculosis_or_lung_cancer?
-6 -> 4 
+pour dyspnoea? à 0.1 près, il est équivalent de savoir :
+- visit_to_Asia? tuberculosis? smoking? lung_cancer? tuberculosis_or_lung_cancer? bronchitis? positive_Xray? ou
+- tuberculosis_or_lung_cancer? bronchitis?
+gain : 7 -> 2 
 
-pour bronchitis? il est équivalent de savoir
-visit_to_Asia? tuberculosis? smoking? lung_cancer? tuberculosis_or_lung_cancer?
-tuberculosis? lung_cancer? smoking?
-5 -> 3 
+pour positive_Xray? à 0.1 près, il est équivalent de savoir :
+- visit_to_Asia? tuberculosis? smoking? lung_cancer? tuberculosis_or_lung_cancer? bronchitis? ou
+-
+gain : 6 -> 0 
 
-pour tuberculosis_or_lung_cancer? il est équivalent de savoir
-visit_to_Asia? tuberculosis? smoking? lung_cancer?
-tuberculosis? lung_cancer?
-4 -> 2 
+pour bronchitis? à 0.1 près, il est équivalent de savoir :
+- visit_to_Asia? tuberculosis? smoking? lung_cancer? tuberculosis_or_lung_cancer? ou
+-
+gain : 5 -> 0 
 
-pour lung_cancer? il est équivalent de savoir
-visit_to_Asia? tuberculosis? smoking?
-tuberculosis? smoking?
-3 -> 2 
+pour tuberculosis_or_lung_cancer? à 0.1 près, il est équivalent de savoir :
+- visit_to_Asia? tuberculosis? smoking? lung_cancer? ou
+-
+gain : 4 -> 0 
 
-pour smoking? il est équivalent de savoir
-visit_to_Asia? tuberculosis?
-tuberculosis?
-2 -> 1 
+pour lung_cancer? à 0.1 près, il est équivalent de savoir :
+- visit_to_Asia? tuberculosis? smoking? ou
+-
+gain : 3 -> 0 
 
-pour tuberculosis? il est équivalent de savoir
-visit_to_Asia?
+pour smoking? à 0.1 près, il est équivalent de savoir :
+- visit_to_Asia? tuberculosis? ou
+-
+gain : 2 -> 0 
 
-1 -> 0 
+pour tuberculosis? à 0.1 près, il est équivalent de savoir :
+- visit_to_Asia? ou
+-
+gain : 1 -> 0 
 
-256 -> 102
+à 0.1 près ON PASSE DE 256 paramètres à 22
+ERREUR MAXIMALE en reconstruisant la loi jointe: 0.10029883521060634 
+
+
+pour dyspnoea? à 0.01 près, il est équivalent de savoir :
+- visit_to_Asia? tuberculosis? smoking? lung_cancer? tuberculosis_or_lung_cancer? bronchitis? positive_Xray? ou
+- tuberculosis_or_lung_cancer? bronchitis?
+gain : 7 -> 2 
+
+pour positive_Xray? à 0.01 près, il est équivalent de savoir :
+- visit_to_Asia? tuberculosis? smoking? lung_cancer? tuberculosis_or_lung_cancer? bronchitis? ou
+- tuberculosis_or_lung_cancer?
+gain : 6 -> 1 
+
+pour bronchitis? à 0.01 près, il est équivalent de savoir :
+- visit_to_Asia? tuberculosis? smoking? lung_cancer? tuberculosis_or_lung_cancer? ou
+- smoking?
+gain : 5 -> 1 
+
+pour tuberculosis_or_lung_cancer? à 0.01 près, il est équivalent de savoir :
+- visit_to_Asia? tuberculosis? smoking? lung_cancer? ou
+- tuberculosis? lung_cancer?
+gain : 4 -> 2 
+
+pour lung_cancer? à 0.01 près, il est équivalent de savoir :
+- visit_to_Asia? tuberculosis? smoking? ou
+- smoking?
+gain : 3 -> 1 
+
+pour smoking? à 0.01 près, il est équivalent de savoir :
+- visit_to_Asia? tuberculosis? ou
+-
+gain : 2 -> 0 
+
+pour tuberculosis? à 0.01 près, il est équivalent de savoir :
+- visit_to_Asia? ou
+-
+gain : 1 -> 0 
+
+à 0.01 près ON PASSE DE 256 paramètres à 34
+ERREUR MAXIMALE en reconstruisant la loi jointe: 0.00011614479030003233 
+
+
+pour dyspnoea? à 0.0001 près, il est équivalent de savoir :
+- visit_to_Asia? tuberculosis? smoking? lung_cancer? tuberculosis_or_lung_cancer? bronchitis? positive_Xray? ou
+- tuberculosis_or_lung_cancer? bronchitis?
+gain : 7 -> 2 
+
+pour positive_Xray? à 0.0001 près, il est équivalent de savoir :
+- visit_to_Asia? tuberculosis? smoking? lung_cancer? tuberculosis_or_lung_cancer? bronchitis? ou
+- tuberculosis_or_lung_cancer?
+gain : 6 -> 1 
+
+pour bronchitis? à 0.0001 près, il est équivalent de savoir :
+- visit_to_Asia? tuberculosis? smoking? lung_cancer? tuberculosis_or_lung_cancer? ou
+- smoking?
+gain : 5 -> 1 
+
+pour tuberculosis_or_lung_cancer? à 0.0001 près, il est équivalent de savoir :
+- visit_to_Asia? tuberculosis? smoking? lung_cancer? ou
+- tuberculosis? lung_cancer?
+gain : 4 -> 2 
+
+pour lung_cancer? à 0.0001 près, il est équivalent de savoir :
+- visit_to_Asia? tuberculosis? smoking? ou
+- smoking?
+gain : 3 -> 1 
+
+pour smoking? à 0.0001 près, il est équivalent de savoir :
+- visit_to_Asia? tuberculosis? ou
+-
+gain : 2 -> 0 
+
+pour tuberculosis? à 0.0001 près, il est équivalent de savoir :
+- visit_to_Asia? ou
+- visit_to_Asia?
+gain : 1 -> 1 
+
+à 0.0001 près ON PASSE DE 256 paramètres à 36
+ERREUR MAXIMALE en reconstruisant la loi jointe: 5.551115123125783e-17 
+
+
+
+Process finished with exit code 0
 

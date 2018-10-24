@@ -3,9 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 import itertools
-from mpl_toolkits.mplot3d import Axes3D
 import pyAgrum as gum
 import pyAgrum.lib.ipython as gnb
+from mpl_toolkits.mplot3d import Axes3D#"unused" mais nécessaire
 
 
 def assertDensity(a):
@@ -34,9 +34,10 @@ def galton():
     nbEtage = 10
     arr = np.array([binomiale(nbEtage, .5) for _ in range(100)])
     nbVals = nbEtage + 1
-    a, b, c = plt.hist(arr, bins=range(nbVals))
-    # plt.show()
-    plt.close('all')
+    plt.hist(arr, bins=range(nbVals))
+    plt.title('galton')
+    plt.show()
+    plt.close()
 
 
 def normale(k, std):
@@ -87,22 +88,20 @@ def dessine(P_jointe):
     ax.set_xlabel('A')
     ax.set_ylabel('B')
     ax.set_zlabel('P(A) * P(B)')
-    # plt.show()
+    plt.show()
+    plt.close()
 
 
 def visualisationIndependances():
     """Visualisation d'indépendances"""
     normx, normy = normale(55, 2)
     plt.plot(normx, normy)
-    # plt.show()
-    plt.close('all')
     
     affx, affy = proba_affine(7, .04)
     plt.plot(affx, affy)
-    # plt.show()
-    plt.close('all')
     
     norm_aff = pXY(normy, affy)
+    plt.close()
     dessine(norm_aff)
 
 
@@ -124,6 +123,7 @@ def independancesConditionnelles():
                       for z in range(2)] for y in range(2)])
     assertDensity(P_YZ)
     
+    #calcul de différentes manières
     # x à l'intérieur
     P_XT_YZ = np.array([P_XYZT[x, y, z, t] / P_YZ[y, z] for x, t, y, z in
                         itertools.product(*map(range, [2, 2, 2, 2]))])\
@@ -142,12 +142,11 @@ def independancesConditionnelles():
             assertDensity(P_XT_YZ[:, :, y, z])
             assertDensity(P_X_YZ[:, y, z])
             assertDensity(P_T_YZ[:, y, z])
-    # print(P_XT_YZ)
     prod_xt_yz = np.array([P_X_YZ[x, y, z] * P_T_YZ[t, y, z] for x, t, y, z in
                            itertools.product(*map(range, [2, 2, 2, 2]))])\
         .reshape(2, 2, 2, 2)
-    # print(prod_xt_yz)
     print('XT indép sachant YZ : ', np.all(np.abs(P_XT_YZ - prod_xt_yz) < .001))
+    
     
     # indépendance X et (Y,Z)
     P_XYZ = np.array([np.sum(P_XYZT[x, y, z, :]) for x, y, z in
@@ -159,8 +158,6 @@ def independancesConditionnelles():
     
     prod_xyz = np.array([P_X[x] * P_YZ2[y, z] for x, y, z in
                          itertools.product(*map(range, [2, 2, 2]))]).reshape(2, 2, 2)
-    # print(P_XYZ)
-    # print(prod_xyz)
     print('X indép YZ : ', np.all(np.abs(P_XYZ - prod_xyz) < .001))
 
 
@@ -197,23 +194,24 @@ def conditional_indep(p, x, y, z, e):
     
     #l'ensemble du "sachant" est vide
     if len(z) == 0:
-        #margSumIn ne garde que les dimensions spécifiées (en sommant les autres)
         xy = p.margSumIn([x.name(), y.name()])
         x = xy.margSumIn([x.name()])
         y = xy.margSumIn([y.name()])
         q = xy - x * y
     else:
+        #margSumIn ne garde que les dimensions spécifiées (en sommant les autres)
         xyz = p.margSumIn([i.name() for i in [x, y, *z]])
-        xz = xyz.margSumIn([i.name() for i in [x, *z]])
-        yz = xyz.margSumIn([i.name() for i in [y, *z]])
-        z = xz.margSumIn([i.name() for i in z])
+        #margSumOut les enlève (en sommant les autres)
+        xz = xyz.margSumOut([y.name()])
+        yz = xyz.margSumOut([x.name()])
+        z = xz.margSumOut([x.name()])
         xy_z = xyz / z
         x_z = xz / z
         y_z = yz / z
         q = xy_z - x_z * y_z
-    
+        
     return q.abs().max() < e
-
+    
 
 def compact_conditional_proba(p, X, e):
     """p:potential = loi jointe des Xi,
@@ -225,7 +223,7 @@ def compact_conditional_proba(p, X, e):
     liste_sachant.remove(X)
     
     print('pour', X.name(), 'à', e, 'près, il est équivalent de savoir :')
-    print(*map(lambda x: x.name(), liste_sachant), 'ou')
+    print('-', *map(lambda x: x.name(), liste_sachant), 'ou')
     
     #enlève les Xi un par un si X indep Xi | liste_sachant\Xi
     for xi in liste_sachant[:]:#[:] nécessaire car la liste est modifiée
@@ -235,11 +233,13 @@ def compact_conditional_proba(p, X, e):
         if not conditional_indep(p, X, xi, liste_sachant, e):
             liste_sachant.insert(ind, xi)
     
-    print(*map(lambda x: x.name(), liste_sachant))
+    print('-',*map(lambda x: x.name(), liste_sachant))
     print('gain :', len(p.variablesSequence()) - 1, '->', len(liste_sachant), '\n')
     
-    r = p.margSumIn([X.name()])
+    #loi jointe
+    r = p.margSumIn([i.name() for i in liste_sachant + [X]])
     
+    #divise par liste sachant pour obtenir conditionelle
     if len(liste_sachant) != 0:
         r = r / p.margSumIn([i.name() for i in liste_sachant])
     
@@ -270,36 +270,45 @@ def create_bayesian_network(p, e):
     return liste
 
 def proba_from_bn(bn, x):
-    print([ssproba[x] for ssproba in bn])
+    """x de la forme
+    {nom: val for nom, val in zip(p.var_names, [1,0,1,1...])}"""
     return np.prod([ssproba[x] for ssproba in bn])
     
 
 def consoMemoire():
-    var, proba = read_file("asia.txt")
+    """
+    bn = gum.loadBN("munin1.bif")#marche mais n'est pas du meme type que read_file
+    #affichage de la taille des probabilités jointes compacte et non compacte
+    print(bn)
+    #affichage graphique du réseau bayésien, ne fonctionne pas
+    #import pyAgrum.lib.notebook as gnb
+    #gnb.showBN(bn)#pydotplus.graphviz.InvocationException: GraphViz's executables not found
+    proba = bn.completeInstantiation()
+    """
+    try:
+        _, proba = read_file("asia.txt")
+        gnb.showPotential(proba.margSumIn(proba.var_names[:2]))
+    except FileNotFoundError:
+        _, proba = read_file("2017_tme2_asia.txt")
+    print('\n\n')
     
-    gnb.showPotential(proba.margSumIn(proba.var_names[:2]))
-    #print(proba.var_names)
-    #gnb.showPotential(proba)
-    # proba = proba.putFirst(var[0].name())
-    # c = compact_conditional_proba(proba, var[0],0.001)
-    # gnb.showPotential(c)
-    for e in [.0001]:
+    for e in [.1, .01, .0001]:
         bn = create_bayesian_network(proba, e)
         
-        x = {nom: val for nom, val in zip(proba.var_names, [1,0,1,1,0,1,1,1])}
-        print(proba_from_bn(bn, x))
+        print('à', e, 'près ON PASSE DE', proba.toarray().size,
+              'paramètres à', sum([i.toarray().size for i in bn]))
         
-        print('à', e, 'près on passe de', proba.toarray().size,
-              'paramètres à', sum([i.toarray().size for i in bn]), '\n\n')
-    
-
-
+        #reconstitue la loi jointe et compare avec la loi initiale pour tester
+        p2 = bn[0]#shallow copies, invalide bn
+        for i in bn[1:]:
+            p2 *= i
+        print("ERREUR MAXIMALE en reconstruisant la loi jointe:", (p2-proba).abs().max(), '\n\n')
+        
+        
 def main():
     galton()
     visualisationIndependances()
     independancesConditionnelles()
-    print('\n\n')
     consoMemoire()
-
 
 main()
