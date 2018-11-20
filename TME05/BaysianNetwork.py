@@ -230,7 +230,7 @@ def learn_parameters(bn_struct, ficname):
 
 DEBUG=False
 def main():
-    nomFichier = 'asia.csv'#alarm lag
+    nomFichier = '2014_tme5_asia3.csv'#alarm lag
     #names : tableau contenant les noms des variables aléatoires
     #data  : tableau 2D contenant les
     #instanciations des variables aléatoires

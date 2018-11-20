@@ -2,6 +2,7 @@ import numpy as np
 from numpy import random
 import matplotlib.pyplot as plt
 import fonctionHistogramme as fhist
+import sys
 
 plt.close('all')
 #import pickle as pkl
