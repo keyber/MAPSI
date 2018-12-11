@@ -199,10 +199,12 @@ def main():
 
     # création de l'animation : tout d'abord on crée la figure qui sera animée
     fig = plt.figure()
+    #GetCurrentAxes
     ax = fig.gca(xlim=(bounds[0], bounds[1]), ylim=(bounds[2], bounds[3]))
-
+    
     # la fonction appelée à chaque pas de temps pour créer l'animation
     def animate(i):
+        #CLearAxes
         ax.cla()
         dessine_normales(data, res[i][0], res[i][1], bounds, ax)
         ax.text(5, 40, 'step = ' + str(i))
