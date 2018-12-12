@@ -42,7 +42,6 @@ def testResAnalytiques(X,Y):
     XAB = np.hstack((X.reshape(n, 1), np.ones((n, 1))))
     a2,b2 = resolutionMoindresCarres(XAB, Y)
     
-    print(a,b)
     assert abs(a-a2)<1e-5 and abs(b-b2)<1e-5
     
     f0 = b
@@ -53,15 +52,27 @@ def testResAnalytiques(X,Y):
     a3 = resolutionMoindresCarres(XA,Y)
     plt.plot([0,1],[0,a3], c='k')
 
-def resolutionDescenteGradient(X:np.array, Y, eps, nIteration):
+
+def resolutionDescenteGradient(X: np.array, Y, eps, nIteration):
     D = np.zeros(X.shape[1])  # init à 0
     listD = [D]
     for _ in range(nIteration):
         grad = 2 * X.T.dot(X.dot(D) - Y)
-        D = D.copy() - grad*eps
+        D = D.copy() - grad * eps
         listD.append(D)
     
     return np.array(listD)
+
+
+def resolutionSGD(X: np.array, Y, eps, nIteration):
+    """descente de gradient stochastique"""
+    D = np.zeros(X.shape[1])  # init à 0
+    for _ in range(nIteration):
+        i = random.randint(0,X.shape[1]-1)
+        gradi = 2*X.T[i].dot(X.dot(D) - Y)
+        D[i] -= gradi * eps
+    return np.array([D])
+
 
 def traceEspace(X,Y,wstar,intX, intY):
     # tracé de l'espace des couts
@@ -104,8 +115,13 @@ def exLin():
     plt.show()
     
     XAB = np.hstack((X.reshape(n, 1), np.ones((n, 1))))
-    print("6e-3 converge, 8e-3 diverge")
     astar,bstar = resolutionMoindresCarres(XAB,Y)
+
+    aSGD, bSGD = resolutionSGD(XAB,Y,6e-3,100)[0]
+    print("analytiques", astar,bstar)
+    print("SGD        ", aSGD, bSGD)
+    print()
+    print("Descente gradient 6e-3 converge, 8e-3 diverge")
     xmin,xmax,ymin,ymax=(astar-1,astar+1,bstar-1,bstar+1)
     for eps, nIt in zip([6e-3,8e-3], [30,20]):
         res = resolutionDescenteGradient(XAB, Y, eps, nIt)
@@ -117,7 +133,8 @@ def exLin():
     
     trace3D(XAB, Y, resolutionMoindresCarres(XAB,Y), resolutionDescenteGradient(XAB, Y, 6e-3, 30))
     plt.show()
-
+    print()
+    
 def addCol(X, listCoefs):
     """retourne la matrice X concaténée à la colonne obtenue comme ne modifie pas X"""
     for coefs in listCoefs:
@@ -148,17 +165,19 @@ def exQuad():
     XABC = createMatrix(X.reshape((n,1)),True,True,False)
     #XABC = np.hstack((np.square(X).reshape(n,1), X.reshape(n, 1), np.ones((n, 1))))
     b,c,a = resolutionMoindresCarres(XABC,Y)
-    print(a,b,c)
+    print("opt quad",a,b,c)
     abscisse = np.linspace(0,1,100)
     f = list(map(lambda x:a*x*x+b*x+c, abscisse))
     plt.plot(abscisse, f, 'r')
     plt.show()
+    print()
 
 def exRealData():
     data = np.loadtxt("winequality-red.csv", delimiter=";", skiprows=1)
     N, d = data.shape  # extraction des dimensions
     pcTrain = 0.8  # % des données en apprentissage
     nbIt=10
+    print("real data")
     for choices in [[0,0,0],[1,0,0],[1,1,0],[1,1,1]]:
         moy = 0
         for _ in range(nbIt):
@@ -182,7 +201,7 @@ def exRealData():
 
 
 def main():
-    #exLin()
+    exLin()
     exQuad()
     exRealData()
     
